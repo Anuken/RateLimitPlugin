@@ -1,0 +1,7 @@
+{
+  "name": "RateLimit",
+  "author": "Anuke",
+  "main": "ratelimit.RateLimit",
+  "description": "Imposes a configuration rate limit.",
+  "version": 1.0
+}
