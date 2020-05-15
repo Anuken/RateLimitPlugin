@@ -4,33 +4,41 @@ import arc.*;
 import arc.struct.*;
 import arc.util.*;
 import mindustry.*;
+import mindustry.game.EventType.*;
 import mindustry.net.Administration.*;
 import mindustry.plugin.Plugin;
 
-import static mindustry.Vars.player;
-
 public class RateLimit extends Plugin{
     private ObjectMap<String, Ratekeeper> idToRate = new ObjectMap<>();
+    private IntIntMap placed = new IntIntMap();
 
-    public RateLimit(){
+    @Override
+    public void init(){
+        Events.on(BlockBuildEndEvent.class, e -> {
+            //players should be able to configure their own tiles
+            if(e.player != null){
+                placed.put(e.tile.pos(), e.player.id);
+            }
+        });
+
         //block interaction rate limit
         Vars.netServer.admins.addActionFilter(action -> {
             if(action.type != ActionType.breakBlock &&
             action.type != ActionType.placeBlock &&
             action.type != ActionType.tapTile &&
-            Config.antiSpam.bool()){
+            Config.antiSpam.bool() && placed.get(action.tile.pos(), -1) != action.player.id){
                 int window = Core.settings.getInt("rateWindow", 6);
                 int limit = Core.settings.getInt("rateLimit", 25);
                 int kickLimit = Core.settings.getInt("rateKickLimit", 60);
 
-                Ratekeeper rate = idToRate.getOr(player.uuid, Ratekeeper::new);
+                Ratekeeper rate = idToRate.getOr(action.player.uuid, Ratekeeper::new);
                 if(rate.allow(window * 1000, limit)){
                     return true;
                 }else{
                     if(rate.occurences > kickLimit){
-                        player.con.kick("You are interacting with too many blocks.", 1000 * 30);
+                        action.player.con.kick("You are interacting with too many blocks.", 1000 * 30);
                     }else{
-                        player.sendMessage("[scarlet]You are interacting with blocks too quickly.");
+                        action.player.sendMessage("[scarlet]You are interacting with blocks too quickly.");
                     }
 
                     return false;
